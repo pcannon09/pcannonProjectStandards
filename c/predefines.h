@@ -48,4 +48,3 @@
 #	define EXAMPLE_Debug(_type, _msg)
 #endif
 
-
