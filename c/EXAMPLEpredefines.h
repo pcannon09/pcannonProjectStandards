@@ -1,3 +1,9 @@
+/**
+ * EXAMPLEpredefines.h - pcannonProjectStandards
+ * Predefines for C and C++ projects
+ * STD Information: 20250723 - 1.0S
+ */
+
 #pragma once
 
 // Project setup
@@ -16,14 +22,14 @@
 // * build
 #define EXAMPLE_VERSION_STATE          "dev"
 
-#define EXAMPLE_VERSION                ((FDX_VERSION_MAJOR<<16)|(FDX_VERSION_MINOR<<8)|(FDX_VERSION_PATCH)|(FDX_VERSION_STATE << 24))
+#define EXAMPLE_VERSION                ((EXAMPLE_VERSION_MAJOR<<16)|(FDX_VERSION_MINOR<<8)|(FDX_VERSION_PATCH)|(FDX_VERSION_STATE << 24))
 
-#define EXAMPLE_VERSION_CHECK(FDX_VERSION_MAJOR, FDX_VERSION_MINOR, FDX_VERSION_PATCH, FDX_VERSION_STATE) \
-    (((EXAMPLE_VERSION_MAJOR)<<16)|((FDX_VERSION_MINOR)<<8)|(FDX_VERSION_PATCH)|((FDX_VERSION_STATE) << 24))
+#define EXAMPLE_VERSION_CHECK(EXAMPLE_VERSION_MAJOR, FDX_VERSION_MINOR, FDX_VERSION_PATCH, FDX_VERSION_STATE) \
+    (((EXAMPLE_VERSION_MAJOR)<<16)|((EXAMPLE_VERSION_MINOR)<<8)|(FDX_VERSION_PATCH)|((FDX_VERSION_STATE) << 24))
 
 // Macro utils
 #define EXAMPLE_STRINGIFY(x) #x
-#define EXAMPLE_TOSTRING(x) FDX_STRINGIFY(x)
+#define EXAMPLE_TOSTRING(x) EXAMPLE_STRINGIFY(x)
 
 #ifndef EXAMPLE_DEV
 #   define EXAMPLE_DEV true
@@ -40,11 +46,4 @@
 #else
 #	error "Current platform is not supported"
 #endif // defined(WIN32) // Platform check
-
-#if EXAMPLE_DEV
-#	include <iostream>
-#	define EXAMPLE_Debug(_type, _msg) std::cout << "[ FINDX MESSAGE: " + std::string(_type) + " ] " + std::string(_msg) + "\n";
-#else
-#	define EXAMPLE_Debug(_type, _msg)
-#endif
 
