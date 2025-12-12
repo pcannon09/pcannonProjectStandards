@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # PCANNON GEN.SH v1.0S - FROM PCANNON PROJECT STANDARDS
-# STANDARD: 20250608
+# STANDARD: 20251212
+# FROM STD: 20250608
 # https://github.com/pcannon09/pcannonProjectStandards
 
 source ./utils/inc/sh/colors.sh

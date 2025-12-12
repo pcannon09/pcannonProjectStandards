@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # PCANNON RUN.SH v1.0S - FROM PCANNON PROJECT STANDARDS
-# STANDARD: 20250608
+# STANDARD: 20251212
+# FROM STD: 20250608
 # https://github.com/pcannon09/pcannonProjectStandards
 
 PROJECT_INFO_PATH=".private/project.json"

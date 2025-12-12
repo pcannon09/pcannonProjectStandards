@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# PCANNON COMPILE.SH v1.0S - FROM PCANNON PROJECT STANDARDS
-# STANDARD: 20250608
+# PCANNON COMPILE.SH v1.1S - FROM PCANNON PROJECT STANDARDS
+# STANDARD: 20251212
+# FROM STD: 20251212
 # https://github.com/pcannon09/pcannonProjectStandards
 
 set -e
@@ -39,7 +40,7 @@ function ninjaComp() {
 	cmake --build build -j"$cores" -v
 }
 
-if [ "$enableBackup" == "YES" ]; then
+if [ "$enableBackup" == "YES" ] || [ "$enableBackup" == "yes" ] || [ "$enableBackup" == "y" ]; then
 	printf "${BOLD}${GREEN}[ INFO ] Backing up executable\n${RESET}"
 
 	exeBakPath="./build/bin/exeBackup"
@@ -93,24 +94,51 @@ elif [ "$1" == "settings" ]; then
 	echo -e "${BOLD}[ PROMPT ] Enter the number of cores to compile the program ${RESET}"
 	read cores
 
-	if [[ ! -s "$COMPILATION_FILE_PATH" ]]; then
-		echo "{}" > "$COMPILATION_FILE_PATH"
-	fi
+	if [[ "$cores" != "same" ]]; then
+		if [[ ! -s "$COMPILATION_FILE_PATH" ]]; then
+			echo "{}" > "$COMPILATION_FILE_PATH"
+		fi
 
-	jq ".cores = $cores" "$COMPILATION_FILE_PATH" > tmp/tmp_dev_compilation.json
+		if [[ "$cores" =~ ^-?[0-9]+$ ]]; then
+			jq ".cores = $cores" "$COMPILATION_FILE_PATH" > tmp/tmp_dev_compilation.json
+
+		else
+			echo -e "${RED}Give a number for \`cores\`, not a string or boolean${RESET}"
+			exit 1
+		fi
+
+	else cores=$(echo $(cat $COMPILATION_FILE_PATH) | jq '.cores')
+	fi
 
 	# ENABLE BACKUP (YES OR NO)
 	echo -e "${BOLD}[ PROMPT ] Enable backup? 'YES' or 'NO' ${RESET}"
+
 	read enableBackup
+
+	if [[ "$enableBackup" == "same" ]]; then
+		echo $(cat $COMPILATION_FILE_PATH) | jq '.enableBackup'
+	fi
 
 	# SET MACROS
 	echo -e "${BOLD}[ PROMPT ] Macros (OPTIONAL)\n(done: Stop adding to macro list)${RESET}"
 	programMacros=()
 
 	while IFS= read -r macroVal; do
-		if [ "$macroVal" == "done" ]; then
+		if [ "$macroVal" == "same" ]; then
+			programMacros=$(echo $(cat $COMPILATION_FILE_PATH) | jq -r '.macros' | jq -r '.[]')
+
 			break
+
+		elif [ "$macroVal" == "done" ]; then
+			break
+
+		elif [ "$macroVal" == "clear" ]; then
+			programMacros=("")
+
+			echo "[ CLEARED ]"
+			continue
 		fi
+
 		programMacros+=("$macroVal")
 	done
 
