@@ -1,7 +1,7 @@
 #!/bin/bash
 # setup.sh - pcannonProjectStandards
 # Predefines for C and C++ projects
-# STD Information: 20250217 - 1.0
+# STD Information: 20260217 - 1.0
 
 echo "This script will setup everything for a C / C++ project"
 echo "Press CTRL + C to cancel or return to continue"
