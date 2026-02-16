@@ -1,216 +1,193 @@
-# PCANNON CMAKELISTS.TXT v1.2S - FROM PCANNON PROJECT STANDARDS
-# STANDARD: 20250913
+# PCANNON CMAKELISTS.TXT v1.3 - FROM PCANNON PROJECT STANDARDS
+# STANDARD: 20260216
 # https://github.com/pcannon09/pcannonProjectStandards
 
 cmake_minimum_required(VERSION 3.24)
 
-# Link exec if only changed
-cmake_policy(SET CMP0147 NEW)
+project_placeholder()
 
 include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
-# Build mode configuration
-option(DEV_MODE "Enable development mode" ON)
-set(BUILD_MODE "Development" CACHE STRING "Build mode")
+# Read project metadata
 
-if(NOT DEV_MODE)
-    set(DEV_MODE ON)
-    set(BUILD_MODE "Development")
-endif()
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/.private/project.json" projectInfo)
 
-if(DEV_MODE)
-    set(BUILD_MODE "Development" CACHE STRING "Build mode")
-else()
-    set(BUILD_MODE "Production" CACHE STRING "Build mode")
-endif()
-
-# Read metadata
-file(READ ".private/project.json" projectInfo)
-string(JSON projectName GET "${projectInfo}" exeName)
-string(JSON projectVersion GET "${projectInfo}" version)
+string(JSON projectName		GET "${projectInfo}" exeName)
+string(JSON projectVersion	 GET "${projectInfo}" version)
 string(JSON projectVersionState GET "${projectInfo}" versionState)
-string(JSON projectVersionSTD GET "${projectInfo}" versionSTD)
+string(JSON projectVersionSTD  GET "${projectInfo}" versionSTD)
 
-# Version configuration
-set(VERSION "${projectVersion}")
-set(VERSION_STATE "${projectVersionState}")
-set(VERSION_STD "${projectVersionSTD}")
-
-project(${projectName} VERSION ${projectVersion} LANGUAGES CXX)
-
-# Build Configuration
-
-# Development mode flags
-set(DEV_COMPILE_FLAGS
-    -fsanitize=address,leak
-    -g
-    -Wunused
-    -Wall
-    -Wno-range-loop-analysis
-    -DPTREE_DEV=true
+project(${projectName}
+	VERSION ${projectVersion}
+	LANGUAGES CXX
 )
 
-set(DEV_LINK_FLAGS
-    -fsanitize=address,leak
-    -g
-)
+# C++ Standard
 
-# Production mode flags
-set(PROD_COMPILE_FLAGS
-    -O3
-    -DNDEBUG
-    -DPTREE_DEV=false
-)
-
-set(PROD_LINK_FLAGS
-    -O3
-)
-
-# Apply flags based on mode
-if(DEV_MODE)
-    set(PROGRAM_COMPILE_FLAGS ${DEV_COMPILE_FLAGS})
-    set(PROGRAM_LINK_FLAGS ${DEV_LINK_FLAGS})
-else()
-    set(PROGRAM_COMPILE_FLAGS ${PROD_COMPILE_FLAGS})
-    set(PROGRAM_LINK_FLAGS ${PROD_LINK_FLAGS})
-endif()
-
-# Project Configuration
-set(CPP_STD 17)
+set(CPP_STD 20)
 set(CMAKE_CXX_STANDARD ${CPP_STD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_AUTOGEN_VERBOSE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_COLOR_DIAGNOSTICS ON)
 
-# Directory Setup
-set(SRC_DIR "${CMAKE_SOURCE_DIR}/src")
-set(TESTS_DIR "${CMAKE_SOURCE_DIR}/tests")
-set(INC_DIR "${CMAKE_SOURCE_DIR}/inc/${projectName}")
+# Directories
 
-# Source Files
+set(SRC_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(TESTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+set(INC_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/inc/${projectName}")
+
+# Sources
+
 set(HEADERS
-    ${INC_DIR}/EXAMPLEpredefines.hpp
-
-#	ADD HERE
+	${INC_DIR}/EXAMPLEpredefines.hpp
 )
-
-set(SOURCE_NON_INSTALL ${TESTS_DIR}/main.cpp)
-set(SOURCE_INSTALLED ${TESTS_DIR}/releaseMain.cpp)
-set(SOURCE_NON_INSTALL_VER_CHECK ${TESTS_DIR}/version.cpp)
 
 set(SOURCES
-#	ADD HERE
+	# ADD HERE
 )
 
-# Build Targets
-add_library(${projectName}_static STATIC ${SOURCES} ${HEADERS})
-add_library(${projectName}_shared SHARED ${SOURCES} ${HEADERS})
+# Library Targets
 
-add_executable(${projectName}_non_install ${SOURCE_NON_INSTALL})
-add_executable(${projectName}_installed ${SOURCE_INSTALLED})
-add_executable(${projectName}_version_check ${SOURCE_NON_INSTALL_VER_CHECK})
+add_library(${projectName} STATIC ${SOURCES} ${HEADERS})
+add_library(${projectName}::${projectName} ALIAS ${projectName})
 
-function(configure_target tgt)
-    target_compile_options(${tgt} PRIVATE ${PROGRAM_COMPILE_FLAGS})
-    target_link_options(${tgt} PRIVATE ${PROGRAM_LINK_FLAGS})
-    target_include_directories(${tgt} PRIVATE ${INC_DIR})
-    target_link_libraries(${tgt} PRIVATE ${projectName}_static)
-endfunction()
+target_include_directories(${projectName}
+	PUBLIC
+		$<BUILD_INTERFACE:${INC_DIR}>
+		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${projectName}>
+)
 
-configure_target(${projectName}_non_install)
-configure_target(${projectName}_installed)
-configure_target(${projectName}_version_check)
+if(NOT TARGET ${projectName}_uninstall)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE @ONLY
+    )
 
-# Output directory
+    add_custom_target(${projectName}_uninstall
+        COMMAND ${CMAKE_COMMAND} -P
+                "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        COMMENT "Uninstalling ${PROJECT_NAME}..."
+    )
+endif()
+
+target_compile_features(${projectName} PUBLIC cxx_std_${CPP_STD})
+
+# Compiler Warnings
+
+if(MSVC)
+	target_compile_options(${projectName} PRIVATE /W4)
+else()
+	target_compile_options(${projectName} PRIVATE
+		-Wall -Wextra -Wpedantic
+	)
+endif()
+
+# Debug / Release handling
+
+target_compile_definitions(${projectName}
+	PUBLIC
+		$<$<CONFIG:Debug>:EXAMPLE_DEV=1>
+		$<$<CONFIG:Release>:EXAMPLE_DEV=0>
+)
+
+if(NOT MSVC)
+	target_compile_options(${projectName} PRIVATE
+		$<$<CONFIG:Debug>:-g>
+		$<$<CONFIG:Release>:-O3>
+	)
+
+	target_link_options(${projectName} PRIVATE
+		$<$<CONFIG:Debug>:-g>
+	)
+endif()
+
+# Optional sanitizers (only for Debug and only on supported compilers)
+option(ENABLE_SANITIZER "Enable address sanitizer in Debug builds" ON)
+
+if(ENABLE_SANITIZER AND NOT MSVC)
+	target_compile_options(${projectName} PRIVATE
+		$<$<CONFIG:Debug>:-fsanitize=address,leaks>
+	)
+	target_link_options(${projectName} PRIVATE
+		$<$<CONFIG:Debug>:-fsanitize=address,leaks>
+	)
+endif()
+
+# Executables
+
+add_executable(${projectName}_dev ${TESTS_DIR}/main.cpp)
+target_link_libraries(${projectName}_dev PRIVATE ${projectName})
+
+add_executable(${projectName}_release ${TESTS_DIR}/releaseMain.cpp)
+target_link_libraries(${projectName}_release PRIVATE ${projectName})
+
+add_executable(${projectName}_version ${TESTS_DIR}/version.cpp)
+target_link_libraries(${projectName}_version PRIVATE ${projectName})
+
 set_target_properties(
-    ${projectName}_non_install
-    ${projectName}_installed
-    ${projectName}_version_check
-    PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+	${projectName}_dev
+	${projectName}_release
+	${projectName}_version
+	PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-# INSTALL / EXPORT CONFIGURATION
-# Install libraries
-install(TARGETS ${projectName}_static ${projectName}_shared
-    EXPORT ${projectName}Target
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include
+# Install Rules
+
+install(TARGETS ${projectName}
+	EXPORT ${projectName}Targets
+	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-# Install headers
-install(DIRECTORY ${INC_DIR}/ ${SRC_DIR}/
-    DESTINATION include/${projectName}
+install(DIRECTORY ${INC_DIR}/
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${projectName}
 )
 
-install(EXPORT ${projectName}Target
-    FILE ${projectName}Target.cmake
-    NAMESPACE Example::
-    DESTINATION lib/cmake/${projectName}
-)
+# Package Config
 
-# Export package
-
-# Generate config file
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_package_config.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/${projectName}Config.cmake"
-    INSTALL_DESTINATION lib/cmake/${projectName}
-)
-
-# Install package config files
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/${projectName}Config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${projectName}ConfigVersion.cmake"
-    DESTINATION lib/cmake/${projectName}
-)
-
-# UNINSTALL
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    @ONLY
-)
-
-add_custom_target(uninstall
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-    COMMENT "Uninstalling ${projectName} ${VERSION}-${VERSION_STATE}..."
-)
-
-# Generate a version file
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${projectName}ConfigVersion.cmake"
-    VERSION ${VERSION}
-    COMPATIBILITY AnyNewerVersion
+	"${CMAKE_CURRENT_BINARY_DIR}/${projectName}ConfigVersion.cmake"
+	VERSION ${PROJECT_VERSION}
+	COMPATIBILITY AnyNewerVersion
 )
 
-# PACKAGE CONFIG
+configure_package_config_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_package_config.cmake.in"
+	"${CMAKE_CURRENT_BINARY_DIR}/${projectName}Config.cmake"
+	INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${projectName}
+)
+
+install(EXPORT ${projectName}Targets
+	FILE ${projectName}Targets.cmake
+	NAMESPACE ${projectName}::
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${projectName}
+)
+
+install(FILES
+	"${CMAKE_CURRENT_BINARY_DIR}/${projectName}Config.cmake"
+	"${CMAKE_CURRENT_BINARY_DIR}/${projectName}ConfigVersion.cmake"
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${projectName}
+)
+
+# CPack
+
 set(CPACK_PACKAGE_NAME ${projectName})
-set(CPACK_PACKAGE_VERSION ${VERSION})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Generated by pcannon Project Standards")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_VENDOR "pcannon")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "pcannon project standards TEMPLATE")
 
 include(CPack)
 
-# BUILD INFO
-message(STATUS "Project: ${projectName}")
-message(STATUS "Version: ${VERSION}-${VERSION_STATE}")
-message(STATUS "Standard: ${VERSION_STD}")
-message(STATUS "Build Mode: ${BUILD_MODE}")
-message(STATUS "CXX Compiler: ${CMAKE_CXX_COMPILER}")
-message(STATUS "CXX Standard: C++${CPP_STD}")
+# Build Info
 
-# Usage instructions
-message(STATUS "Usage:")
-message(STATUS "  Development build: cmake -DDEV_MODE=ON ..")
-message(STATUS "  Production build:  cmake -DDEV_MODE=OFF ..")
-message(STATUS "  Install:           ./compile.sh install {PATH}")
-message(STATUS "  Uninstall:         ./compile.sh uninstall")
+message(STATUS "Project:		${projectName}")
+message(STATUS "Version:		${PROJECT_VERSION}-${projectVersionState}")
+message(STATUS "C++ Standard:	C++${CPP_STD}")
+message(STATUS "Compiler:		${CMAKE_CXX_COMPILER}")
 
