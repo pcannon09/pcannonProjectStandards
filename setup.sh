@@ -28,6 +28,7 @@ mv bash/* ../ --verbose
 
 mv c/* "../inc/$projectName/" --verbose
 mv cmake/* ../ --verbose
+mv private/project.json ../.private/
 
 echo "# REMEMBER:"
 echo "1. To change the project.json file"
