@@ -108,11 +108,6 @@ target_compile_definitions(${projectName}
 add_executable(${projectName}_exec ${SRC_DIR}/main.c)
 target_link_libraries(${projectName}_exec PRIVATE
 		${projectName}
-
-		cvec_static
-		cstr_static
-		mmt
-		argpar-c
 )
 
 if(NOT ${WINDOWS_PLATFORM})
@@ -159,16 +154,7 @@ endif()
 # Executables
 
 set(VENDOR_INC_PATHS
-		${VENDOR_DIR}/cvec/inc/cvec
-		${VENDOR_DIR}/cstr/inc/cstr
-		${VENDOR_DIR}/memtrack/inc/mmt
-		${VENDOR_DIR}/argpar-c/inc/argpar-c
 )
-
-add_subdirectory(${VENDOR_DIR}/cvec cvec)
-add_subdirectory(${VENDOR_DIR}/cstr cstr)
-add_subdirectory(${VENDOR_DIR}/memtrack mmt)
-add_subdirectory(${VENDOR_DIR}/argpar-c argpar-c)
 
 include_directories(${VENDOR_INC_PATHS})
 
