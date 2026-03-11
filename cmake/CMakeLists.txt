@@ -4,48 +4,57 @@
 
 cmake_minimum_required(VERSION 3.24)
 
-project_placeholder()
-
 include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
 
 # Read project metadata
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/.private/project.json" projectInfo)
 
-string(JSON projectName		GET "${projectInfo}" exeName)
-string(JSON projectVersion	 GET "${projectInfo}" version)
+string(JSON projectName	GET "${projectInfo}" exeName)
+string(JSON projectVersion GET "${projectInfo}" version)
+string(JSON projectPrefix GET "${projectInfo}" projectPrefix)
 string(JSON projectVersionState GET "${projectInfo}" versionState)
-string(JSON projectVersionSTD  GET "${projectInfo}" versionSTD)
+string(JSON projectVersionSTD GET "${projectInfo}" versionSTD)
 
 project(${projectName}
 	VERSION ${projectVersion}
-	LANGUAGES CXX
+	LANGUAGES C
 )
 
-# C++ Standard
+# C Standard
 
-set(CPP_STD 20)
-set(CMAKE_CXX_STANDARD ${CPP_STD})
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(C_STD 11)
+set(CMAKE_C_STANDARD ${C_STD})
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+set(CMAKE_COLOR_DIAGNOSTICS ON)
+set(CMAKE_COLOR_MAKEFILE ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_CROSSCOMPILING)
+	set(WINDOWS_PLATFORM YES)
+else()
+	set(WINDOWS_PLATFORM NO)
+endif()
+
+message(STATUS "CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
 
 # Directories
 
 set(SRC_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/src")
-set(TESTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+set(VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor")
 set(INC_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/inc/${projectName}")
 
 # Sources
 
 set(HEADERS
-	${INC_DIR}/EXAMPLEpredefines.hpp
+	${INC_DIR}/EXAMPLEpredefines.h
+	${INC_DIR}/EXAMPLEconfig.h
 )
 
 set(SOURCES
-	# ADD HERE
 )
 
 # Library Targets
@@ -54,6 +63,8 @@ add_library(${projectName} STATIC ${SOURCES} ${HEADERS})
 add_library(${projectName}::${projectName} ALIAS ${projectName})
 
 target_include_directories(${projectName}
+	PRIVATE ${VENDOR_INC_PATHS}
+
 	PUBLIC
 		$<BUILD_INTERFACE:${INC_DIR}>
 		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${projectName}>
@@ -73,12 +84,13 @@ if(NOT TARGET ${projectName}_uninstall)
     )
 endif()
 
-target_compile_features(${projectName} PUBLIC cxx_std_${CPP_STD})
+target_compile_features(${projectName} PUBLIC c_std_${C_STD})
 
 # Compiler Warnings
 
-if(MSVC)
-	target_compile_options(${projectName} PRIVATE /W4)
+if(${WINDOWS_PLATFORM})
+	target_compile_options(${projectName} PRIVATE)
+	target_link_libraries(${projectName} bcrypt)
 else()
 	target_compile_options(${projectName} PRIVATE
 		-Wall -Wextra -Wpedantic
@@ -89,17 +101,36 @@ endif()
 
 target_compile_definitions(${projectName}
 	PUBLIC
-		$<$<CONFIG:Debug>:EXAMPLE_DEV=1>
-		$<$<CONFIG:Release>:EXAMPLE_DEV=0>
+		$<$<CONFIG:Debug>:${projectPrefix}_DEV=1>
+		$<$<CONFIG:Release>:${projectPrefix}DOE_DEV=0>
 )
 
-if(NOT MSVC)
+add_executable(${projectName}_exec ${SRC_DIR}/main.c)
+target_link_libraries(${projectName}_exec PRIVATE
+		${projectName}
+
+		cvec_static
+		cstr_static
+		mmt
+		argpar-c
+)
+
+if(NOT ${WINDOWS_PLATFORM})
 	target_compile_options(${projectName} PRIVATE
-		$<$<CONFIG:Debug>:-g>
+		$<$<CONFIG:Debug>:-g -fno-omit-frame-pointer>
 		$<$<CONFIG:Release>:-O3>
 	)
 
 	target_link_options(${projectName} PRIVATE
+		$<$<CONFIG:Debug>:-g -fno-omit-frame-pointer>
+	)
+
+	target_compile_options(${projectName}_exec PRIVATE
+		$<$<CONFIG:Debug>:-g -fno-omit-frame-pointer>
+		$<$<CONFIG:Release>:-O3>
+	)
+
+	target_link_options(${projectName}_exec PRIVATE
 		$<$<CONFIG:Debug>:-g>
 	)
 endif()
@@ -107,30 +138,42 @@ endif()
 # Optional sanitizers (only for Debug and only on supported compilers)
 option(ENABLE_SANITIZER "Enable address sanitizer in Debug builds" ON)
 
-if(ENABLE_SANITIZER AND NOT MSVC)
+if(ENABLE_SANITIZER AND NOT ${WINDOWS_PLATFORM})
 	target_compile_options(${projectName} PRIVATE
-		$<$<CONFIG:Debug>:-fsanitize=address,leaks>
+		$<$<CONFIG:Debug>:-fsanitize=address,leak>
 	)
+
 	target_link_options(${projectName} PRIVATE
-		$<$<CONFIG:Debug>:-fsanitize=address,leaks>
+		$<$<CONFIG:Debug>:-fsanitize=address,leak>
+	)
+
+	target_compile_options(${projectName}_exec PRIVATE
+		$<$<CONFIG:Debug>:-fsanitize=address,leak>
+	)
+
+	target_link_options(${projectName}_exec PRIVATE
+		$<$<CONFIG:Debug>:-fsanitize=address,leak>
 	)
 endif()
 
 # Executables
 
-add_executable(${projectName}_dev ${TESTS_DIR}/main.cpp)
-target_link_libraries(${projectName}_dev PRIVATE ${projectName})
+set(VENDOR_INC_PATHS
+		${VENDOR_DIR}/cvec/inc/cvec
+		${VENDOR_DIR}/cstr/inc/cstr
+		${VENDOR_DIR}/memtrack/inc/mmt
+		${VENDOR_DIR}/argpar-c/inc/argpar-c
+)
 
-add_executable(${projectName}_release ${TESTS_DIR}/releaseMain.cpp)
-target_link_libraries(${projectName}_release PRIVATE ${projectName})
+add_subdirectory(${VENDOR_DIR}/cvec cvec)
+add_subdirectory(${VENDOR_DIR}/cstr cstr)
+add_subdirectory(${VENDOR_DIR}/memtrack mmt)
+add_subdirectory(${VENDOR_DIR}/argpar-c argpar-c)
 
-add_executable(${projectName}_version ${TESTS_DIR}/version.cpp)
-target_link_libraries(${projectName}_version PRIVATE ${projectName})
+include_directories(${VENDOR_INC_PATHS})
 
 set_target_properties(
-	${projectName}_dev
-	${projectName}_release
-	${projectName}_version
+	${projectName}
 	PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
@@ -188,6 +231,6 @@ include(CPack)
 
 message(STATUS "Project:		${projectName}")
 message(STATUS "Version:		${PROJECT_VERSION}-${projectVersionState}")
-message(STATUS "C++ Standard:	C++${CPP_STD}")
-message(STATUS "Compiler:		${CMAKE_CXX_COMPILER}")
+message(STATUS "C Standard:		C${C_STD}")
+message(STATUS "Compiler:		${CMAKE_C_COMPILER}")
 

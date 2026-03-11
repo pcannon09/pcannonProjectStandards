@@ -1,0 +1,21 @@
+#ifndef INCLUDE_C_EXAMPLECONFIG_H_
+#define INCLUDE_C_EXAMPLECONFIG_H_
+
+#ifdef __cplusplus
+# 	define EXAMPLE_CPP_OPEN 		extern "C" {
+# 	define EXAMPLE_CPP_CLOSE 		}
+#else
+# 	define EXAMPLE_CPP_OPEN
+# 	define EXAMPLE_CPP_CLOSE
+#endif
+
+EXAMPLE_CPP_OPEN
+
+
+
+EXAMPLE_CPP_CLOSE 
+
+#undef EXAMPLE_CPP_OPEN
+#undef EXAMPLE_CPP_CLOSE
+
+#endif  // INCLUDE_C_EXAMPLECONFIG_H_

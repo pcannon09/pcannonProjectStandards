@@ -10,8 +10,14 @@ read
 git clone https://www.github.com/pcannon09/pcannonProjectStandards.git
 
 # Populate
+echo ">> Project executable name?"
+read exeName
+
 echo ">> Project name?"
 read projectName
+
+echo ">> Project prefix?"
+read projectPrefix
 
 mkdir -p "inc/$projectName" --verbose
 
@@ -30,7 +36,20 @@ mv c/* "../inc/$projectName/" --verbose
 mv cmake/* ../ --verbose
 mv private/project.json ../.private/
 
-echo "# REMEMBER:"
-echo "1. To change the project.json file"
-echo "2. Change the content of the files"
+mkdir -p ../tmp
+
+jq \
+	--arg exeName "$exeName" \
+	--arg projectName "$projectName" \
+	--arg projectPrefix "$projectPrefix" \
+	'.exeName = $exeName | .projectName = $projectName | .projectPrefix = $projectPrefix' \
+	../.private/project.json > ../tmp/project.tmp.json
+
+mv ../tmp/project.tmp.json ../.private/project.json
+
+echo "# Templates are populated"
+
+cd ..
+
+rm -rf pcannonProjectStandards
 
